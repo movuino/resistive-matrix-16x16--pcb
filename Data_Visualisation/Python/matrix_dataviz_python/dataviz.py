@@ -1,15 +1,16 @@
+import csv
 import glob
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import sys
-import serial
 import time
-import csv 
-
-from drawnow import *
-from serial_thread import SerialThread
 from typing import List
+
+import matplotlib.pyplot as plt
+import numpy as np
+import serial
+from drawnow import *
+
+from serial_thread import SerialThread
 
 NUM_TX=4
 NUM_RX=6
@@ -24,6 +25,7 @@ def _toArray(data)->None:
     for tx in range(NUM_TX):
         for rx in range(NUM_RX):
             matrix[tx][rx]=int(data[tx*NUM_RX+rx])
+            print(matrix[tx][rx])
 
 def plotMatrix()->None:
     plt.imshow(matrix,interpolation='bilinear',cmap='inferno',origin='lower',vmin=MIN,vmax=MAX)
@@ -88,7 +90,9 @@ def main()->None:
             data=serial_thread.get_last_values()
             if data is None:
                 time.sleep(0.0001)
+                print("No data received")
                 continue
+            print("Data received successfully")
             _toArray(data)
             writer.writerow(data)
             drawnow(plotMatrix)
