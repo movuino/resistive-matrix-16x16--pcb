@@ -25,7 +25,6 @@ def _toArray(data)->None:
     for tx in range(NUM_TX):
         for rx in range(NUM_RX):
             matrix[tx][rx]=int(data[tx*NUM_RX+rx])
-            print(matrix[tx][rx])
 
 def plotMatrix()->None:
     plt.imshow(matrix,interpolation='bilinear',cmap='inferno',origin='lower',vmin=MIN,vmax=MAX)
@@ -89,16 +88,15 @@ def main()->None:
         while True:
             data=serial_thread.get_last_values()
             if data is None:
-                time.sleep(0.0001)
-                print("No data received")
+                #time.sleep(0.0001)
                 continue
-            print("Data received successfully")
-            _toArray(data)
-            writer.writerow(data)
-            drawnow(plotMatrix)
-            plt.pause(0.0001)
-            if len(plt.get_fignums())==0:
-                break
+            else:
+                _toArray(data)
+                writer.writerow(data)
+                drawnow(plotMatrix)
+                #plt.pause(0.0001)
+                if len(plt.get_fignums())==0:
+                   break
         plt.close()
         serial_thread.stop()
             

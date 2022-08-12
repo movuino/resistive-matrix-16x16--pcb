@@ -120,7 +120,9 @@ void MovuinoResistiveMatrix::printData()
   for (int i=0; i< this->_rows; i++){
 	for (int j=0; j< this->_cols; j++){
 		Serial.print(this->_lastUpdate[i][j]);
-		Serial.print(",");
+		if (!(i == (this->_rows -1) && j == (this->_cols -1))){
+			Serial.print(",");
+		}
 	}
   }
   Serial.println();

@@ -31,19 +31,15 @@ class SerialThread(threading.Thread):
                 if self._stop.is_set():
                     break
                 if (self.sr.inWaiting()==0):
-                    print("Thread waiting")
+                    #print("Thread waiting")
                     time.sleep(0.001)
                     continue
                 try:
                     self.data=self.sr.readline().decode('utf-8')
                     _split=self.data[:-2].split(",")
+                    _values = []
                     for value in _split:
-                        print(value)
                         _values.append(int(value))
-                    print("_split List length is:")
-                    print(len(_split))   
-                    print("_values List length is:")
-                    print(len(_values))
                 except:
                     _values=None
                     print("No values!")
@@ -55,10 +51,10 @@ class SerialThread(threading.Thread):
         """Return the last element of the serial stream"""
         with _lock:
             if not self.last_ready:
-                print("Returning None")
+                #print("Returning None")
                 return None
             else:
-                print("Returning something")
+                #print("Returning something")
                 _last=self.buffer[-1]
                 self.last_ready=False
                 return _last
