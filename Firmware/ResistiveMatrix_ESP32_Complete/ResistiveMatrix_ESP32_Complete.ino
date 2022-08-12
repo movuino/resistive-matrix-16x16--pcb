@@ -44,6 +44,7 @@ bool test_mode = true;
 bool isSendingOSC = false;
 
 long timerRecord0;
+long timerOSC0;
 
 String recordId = "ResistiveMatrix";
 String colsId = "col_1" ;
@@ -76,6 +77,7 @@ void setup()
   freezBlink(4);
 
   timerRecord0 = millis();
+  timerOSC0 = millis();
   Serial.println("Setup Done!");
 }
 
@@ -195,6 +197,7 @@ void loop()
   OSCMessage received = osc.receiveMessage();
   if (received.getInt(0)==1){
     isSendingOSC = !isSendingOSC;
+    timerOSC0 = millis();
   }
  }
 }
@@ -283,7 +286,7 @@ void showBatteryLevel(void)
 void sendRawDataOSC(){
   if (isSendingOSC){
     OSCMessage msg("/data");
-    msg.add(int(millis()- timerRecord0)/1000);
+    msg.add(int(millis()- timerOSC0)/1000);
     for(int i = 0; i < ROWS; i++){
       for(int j = 0; j < COLS; j++){
         msg.add((int)matrix.getValue(i,j));
