@@ -42,7 +42,7 @@ class SerialThread(threading.Thread):
                         _values.append(int(value))
                 except:
                     _values=None
-                    print("No values!")
+                    #print("No values!")
                 self.buffer.append(_values)
                 self.last_ready=True
             self.sr.close()
