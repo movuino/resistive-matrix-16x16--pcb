@@ -14,9 +14,8 @@ private:
     char *ssid = "my_box_id";
     char *pass = "my_box_pass";
     unsigned int port = 5555;
-
-    // void receiveMessage();
-    // static void callbackOSC(OSCMessage &msg);
+	
+	OSCErrorCode error;
 
 public:
     MovuinoWifiOSC();
@@ -26,7 +25,11 @@ public:
     void begin();
     void update();
 
-    void send(const char * addr_, float val_);
+    void sendSingleValue(const char * addr_, float val_);
+	void sendMessage(OSCMessage msg_);
+	OSCMessage receiveMessage();
+    static void callbackOSC(OSCMessage &msg);
+
 };
 
 MovuinoWifiOSC::MovuinoWifiOSC() {
@@ -54,7 +57,8 @@ void MovuinoWifiOSC::begin()
     WiFi.begin(ssid, pass);
     while (WiFi.status() != WL_CONNECTED)
     {
-        delay(500);
+        Serial.print('.');
+		delay(500);
     }
     Serial.println("");
     Serial.println("WiFi connected");
@@ -67,7 +71,7 @@ void MovuinoWifiOSC::update()
 {
 }
 
-void MovuinoWifiOSC::send(const char * addr_, float val_)
+void MovuinoWifiOSC::sendSingleValue(const char * addr_, float val_)
 {
     // Create message
     OSCMessage msg_(addr_);
@@ -81,24 +85,40 @@ void MovuinoWifiOSC::send(const char * addr_, float val_)
     // delay(10);
 }
 
-// void MovuinoWifiOSC::receiveMessage() {
-//   // Need to be called in the main loop()
-//   OSCMessage msg_;
-//   int size = udp.parsePacket();
- 
-//   if (size > 0) {
-//     while (size--) {
-//       msg_.fill(udp.read());
-//     }
-//     if (!msg_.hasError()) {
-//      msg_.dispatch("/printInt", this->callbackOSC);
-//     }
-//   }
-// }
+void MovuinoWifiOSC::sendMessage(OSCMessage msg_)
+{
+    // Send message
+    udp.beginPacket(this->outIp, this->port);
+    msg_.send(udp);
+    udp.endPacket();
+    msg_.empty();
+    // delay(10);
+}
 
-// static void MovuinoWifiOSC::callbackOSC(OSCMessage &msg) {
-//   Serial.print("Receive message: ");
-//   Serial.println(msg.getInt(0));
-// }
+OSCMessage MovuinoWifiOSC::receiveMessage() {
+  // Need to be called in the main loop()
+  OSCMessage msg_;
+  int size = udp.parsePacket();
+ 
+  if (size > 0) {
+    while (size--) {
+      msg_.fill(udp.read());
+    }
+    if (!msg_.hasError()) {
+     msg_.dispatch("/command", this->callbackOSC);
+    }
+   else {
+   	this->error = msg_.getError();
+   	Serial.print("error: ");
+   	Serial.println(this->error);
+    }
+  }
+  return msg_;
+}
+
+void MovuinoWifiOSC::callbackOSC(OSCMessage &msg) {
+   Serial.print("Receive message: ");
+   Serial.println(msg.getInt(0));
+}
 
 #endif // _MOVUINOESP32_WIFIOSC_

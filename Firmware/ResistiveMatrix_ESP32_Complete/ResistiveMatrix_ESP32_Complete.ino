@@ -1,5 +1,4 @@
-//#include "_MOVUINO_ESP32/_MPU9250.h"
-//#include "_MOVUINO_ESP32/_WifiOSC.h"
+#include "_MOVUINO_ESP32/_WifiOSC.h"
 #include "_MOVUINO_ESP32/_Button.h"
 #include "_MOVUINO_ESP32/_Recorder.h"
 #include "_MOVUINO_ESP32/_Neopixel.h"
@@ -26,8 +25,8 @@
 #define CMD_DELETE_ALL_FILES 'd' //Delete all files in the SPIFFS
 
 // Wifi configuration
-char ssid[] = "my-wifi";
-char pass[] = "password";
+char ssid[] = "CRI-MAKERLAB";
+char pass[] = "--criMAKER--";
 int port = 5555;
 int ip[4] = {192, 168, 1, 18};
 
@@ -35,15 +34,14 @@ int ip[4] = {192, 168, 1, 18};
 #define ROWS 4
 #define COLS 6
 
-//MovuinoMPU9250 mpu = MovuinoMPU9250();
-// MovuinoWifiOSC osc = MovuinoWifiOSC(ssid, pass, ip, port);
-//MovuinoButton button = MovuinoButton();
+MovuinoWifiOSC osc = MovuinoWifiOSC(ssid, pass, ip, port);
 MovuinoRecorder recorder = MovuinoRecorder();
 MovuinoNeopixel neopix = MovuinoNeopixel();
 BatteryManager batt_mana = BatteryManager();
 MovuinoResistiveMatrix matrix = MovuinoResistiveMatrix(ROWS, COLS);
 
-bool isBtnHold = false;
+bool test_mode = true;
+bool isSendingOSC = false;
 
 long timerRecord0;
 
@@ -51,8 +49,6 @@ String recordId = "ResistiveMatrix";
 String colsId = "col_1" ;
 char colNum[4];
 bool colsDone = false;
-
-int timeHoldCallib = 1800;
 
 uint32_t colOn = BLUE;
 uint32_t colRec = RED;
@@ -63,7 +59,7 @@ uint32_t colFormat = RED;
 void setup()
 {
   Serial.begin(115200);
-  /*pinMode(BATTERY_PIN, INPUT);
+  pinMode(BATTERY_PIN, INPUT);
   
   // Neopixel
   neopix.begin();
@@ -74,49 +70,51 @@ void setup()
   neopix.update();
   
   // Other
-  //mpu.begin();
-  // osc.begin();
-  button.begin();
-  recorder.begin();*/
+  osc.begin();
+  recorder.begin();
   matrix.begin();
-  //freezBlink(4);
-  //Serial.println("Setup Done!");
+  freezBlink(4);
+
+  timerRecord0 = millis();
+  Serial.println("Setup Done!");
 }
 
 void loop()
 {
-  /*if (!colsDone){
+  if (!colsDone){
     for (int i=1; i<COLS; i++){
       colsId += ",col_";
       sprintf(colNum,"%d",i+1);
       colsId += colNum;
     }
     colsDone = true;
-  }*/
+  }
   // -----------------------------------------
   //                TEST
   // -----------------------------------------
-   matrix.update();
-   matrix.printData();
-   //Serial.println(matrix.getValue(2,3));
-   /*if(matrix.getValue(2,3)>200) {
-     neopix.turnOn();
-     neopix.setColor((uint32_t)MAGENTA);
-     neopix.forceUpdate();
+  if (test_mode){
+    matrix.update();
+    matrix.printData();
+    Serial.println(matrix.getValue(2,3));
+    if(matrix.getValue(2,3)>200) {
+      neopix.turnOn();
+      neopix.setColor((uint32_t)MAGENTA);
+      neopix.forceUpdate();
     } 
     else {
      neopix.turnOn();
      neopix.setColor((uint32_t)BLUE);
      neopix.forceUpdate();
     }
-   neopix.turnOff();
+    neopix.turnOff();
+  }
 
+  else{
   // -----------------------------------------
   //                UPDATES
   // -----------------------------------------
   neopix.update();
-  button.update();
-
+  matrix.update();
   
   // -----------------------------------------
   //                SERIAL
@@ -177,62 +175,28 @@ void loop()
   // -----------------------------------------
   //                RECORDER
   // -----------------------------------------
-  if (button.isReleased())
-  {
-    if (!isBtnHold)
-    {
-      if (!recorder.isRecording())
-      {
-        startRecord();
-      }
-      else
-      {
-        stopRecord();
-      }
-    }
-    isBtnHold = false;
-  }
-
-  if (recorder.isRecording())
-  {
-    if (millis() - timerRecord0 > 10)
-    {
+  if (recorder.isRecording()){
+    if (millis() - timerRecord0 > 10){
       matrix.update();  
       for(int i=0; i<ROWS; i++){
         recorder.addRow();
         for(int j=0; j<COLS; j++){
           recorder.pushData<float>(matrix.getValue(i,j));
         }
+        timerRecord0 = millis();
       }
     }
-  }*/
-  /*
-  // -----------------------------------------
-  //               CALLIBRATION
-  // -----------------------------------------
-  if (button.timeHold())
-  {
-    // Color shade
-    float r_ = (button.timeHold() - 400) / (float)timeHoldCallib;
-    neopix.lerpTo(colCallib, r_);
+  }
 
-    if (button.timeHold() > timeHoldCallib)
-    {
-      neopix.setColor(colCallib); // lock color
-      if (button.timeHold() > timeHoldCallib + 20)
-      {
-        isBtnHold = true;
-        freezBlink(2);
-        if (!recorder.isRecording())
-        {
-          mpu.magnometerCalibration();
-          button.reset(); // force reset
-          neopix.blinkOn(100, 2);
-          normalMode();
-        }
-      }
-    }
-  }*/
+  // -----------------------------------------
+  //                  OSC
+  // -----------------------------------------
+  sendRawDataOSC();
+  OSCMessage received = osc.receiveMessage();
+  if (received.getInt(0)==1){
+    isSendingOSC = !isSendingOSC;
+  }
+ }
 }
 
 void normalMode() {
@@ -314,4 +278,20 @@ void showBatteryLevel(void)
   delay(2500);
   Serial.printf("Battery Level: %d%%\n", level);
   delay(2500);
+}
+
+void sendRawDataOSC(){
+  if (isSendingOSC){
+    OSCMessage msg("/data");
+    msg.add(int(millis()- timerRecord0)/1000);
+    for(int i = 0; i < ROWS; i++){
+      for(int j = 0; j < COLS; j++){
+        msg.add((int)matrix.getValue(i,j));
+        Serial.print(matrix.getValue(i,j));
+        if (j < COLS -1)Serial.print("x");
+      }
+      Serial.println();
+    }
+    osc.sendMessage(msg);
+  }
 }
